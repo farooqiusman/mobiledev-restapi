@@ -3,6 +3,7 @@ const express = require('express')
 const app = express()
 const port = 3003
 app.use(express.json()) //json parsing
+require('dotenv').config()
 
 // bcrypt setup
 const bcrypt = require('bcrypt')
@@ -19,10 +20,10 @@ app.use((err, req, res, next) => {
 // mysql setup
 const mysql = require('mysql')
 var dbConfig = {
-    host: '192.168.0.78',
+    host: process.env.HOST,
     port: 3906,
-    user: 'root',
-    password: 'mobiledev123*',
+    user: process.env.USER,
+    password: process.env.PASS,
     database: 'MOBILEDEV'
 }
 var con 
