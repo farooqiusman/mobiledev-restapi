@@ -245,6 +245,35 @@ app.post('/new-setup-pickup', isAuth, (req,res) => {
     }
 })
 
+// Exercises
+
+app.get('/weight-exercises', isAuth, (req, res) => {
+    con = mysql.createConnection(dbConfig) // create new connection to db for query
+    con.connect((err) => {
+        const {user_email} = req.body
+        con.query("SELECT * FROM weight_exercise WHERE user_email = ?", [user_email], (err, results, fields) => {
+            // internal server error handling
+            if (err) {
+                console.error(err)
+                res.sendStatus(500)
+                con.destroy() // destory connection if still alive
+            } else {
+                res.json({
+                    "Status": "OK",
+                    "Response": results
+                })
+                // gracefully end connection after sending data, if error destroy connection (force close)
+                con.end((err) => {
+                    if (err) {
+                        console.error(err)
+                        con.destroy()
+                    }
+                })
+            }
+        })
+    }) 
+})
+
 // app listen
 app.listen(port, () => {
     console.log(`API listening on port ${port}`)
