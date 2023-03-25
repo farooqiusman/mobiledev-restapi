@@ -187,7 +187,7 @@ app.put('/exercises/:id', isAuth, (req, res) => {
         const entries = Object.entries(req.body).filter(([key, value]) => key !== "exercise_type")
         const paramsStr = createPutParamsString(entries.length)
         const params = entries.flat()
-        params.push(id)
+        params.push(parseInt(id))
         
         let query = null
         if (exercise_type === "endurance") { // endurance exercise
@@ -242,7 +242,7 @@ app.delete('/exercises/:id', isAuth, (req, res) => {
             return
         }
         if (query) {
-            con.query(query, [id], (err, results, fields) => {
+            con.query(query, [parseInt(id)], (err, results, fields) => {
                 // internal server error handling
                 if (err) {
                     console.error(err)
