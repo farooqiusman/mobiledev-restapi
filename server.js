@@ -461,8 +461,7 @@ app.delete('/plans/:user_email/:title', isAuth, (req, res) => {
                 con.destroy() // destory connection if still alive
             } else {
                 res.json({
-                    "Status": "OK",
-                    "Response": [req.body]
+                    "Status": "OK"
                 })
                 // gracefully end connection after sending data, if error destroy connection (force close)
                 con.end((err) => {
@@ -605,7 +604,8 @@ app.post('/goals', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.beginTransaction((err) => { // Use a transaction since we are querying two tables
         // store the exercise_type value and add all the other included values to params
-        const {user_email, type, deadline, completed, description, exercise_name, time, sets, reps, weight, start_weight, goal_weight} = req.body
+        const {user_email, type, deadline, description, exercise_name, time, sets, reps, weight, start_weight, goal_weight} = req.body
+        const completed = 0
         const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ')
         let query = "INSERT INTO goal (user_email, type, deadline, completed, creation_date) VALUES (?, ?, ?, ?, ?); SELECT LAST_INSERT_ID() AS id;"
         let params = [user_email, type, deadline, completed, creation_date]
