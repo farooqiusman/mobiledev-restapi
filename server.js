@@ -296,79 +296,164 @@ app.get('/plans', isAuth, (req, res) => {
 
 app.post('/plans', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
-    con.connect((err) => {
+    con.beginTransaction((err) => {
         // store the included values to params
         const {user_email, title, days_of_week} = req.body
+
+        // first check that this user has no plans with the given title
+        let query = "SELECT COUNT(*) AS num_rows FROM workout_plan WHERE user_email = ? AND title = ?"
+        let params = [user_email, title]
+        con.query(query, params, (err, results, fields) => {
+            // internal server error handling
+            if (err) {
+                console.error(err)
+                res.sendStatus(500)
+                return con.rollback(() => {
+                    throw err
+                })
+            }
+
+            const count = results[0].num_rows
+            if (count > 0) {
+                res.json({
+                    "Status": "Bad Request",
+                    "Response": "You already have a workout plan with this title"
+                })
+                return con.rollback(() => {
+                    throw err
+                })
+            }
+        })
+
         const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        const query = "INSERT INTO workout_plan (user_email, title, days_of_week, creation_date) VALUES (?, ?, ?, ?)"
-        const params = [user_email, title, days_of_week, creation_date]
+        query = "INSERT INTO workout_plan (user_email, title, days_of_week, creation_date) VALUES (?, ?, ?, ?)"
+        params = [user_email, title, days_of_week, creation_date]
         
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
                 console.error(err)
                 res.sendStatus(500)
-                con.destroy() // destory connection if still alive
-            } else {
-                res.json({
-                    "Status": "OK",
-                    "Response": [req.body]
+                return con.rollback(() => {
+                    throw err
                 })
-                // gracefully end connection after sending data, if error destroy connection (force close)
-                con.end((err) => {
-                    if (err) {
-                        console.error(err)
-                        con.destroy()
-                    }
+            }
+        })
+
+        con.commit((err) => {
+            if (err) {
+                console.error(err)
+                res.sendStatus(500)
+                return con.rollback(() => {
+                    throw err
                 })
+            }
+        })
+
+        res.json({
+            "Status": "OK",
+            "Response": [req.body]
+        })
+
+        // gracefully end connection after sending data, if error destroy connection (force close)
+        con.end((err) => {
+            if (err) {
+                console.error(err)
+                con.destroy()
             }
         })
     }) 
 })
 
-app.put('/plans/:id', isAuth, (req, res) => {
+app.put('/plans/:user_email/:title', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
-    con.connect((err) => {
+    con.beginTransaction((err) => {
         // get the plan id
-        const {id} = req.params
-        const entries = Object.entries(req.body).filter(([key, value]) => key !== "creation_date")  // Prevent changing the creation_date
+        const {user_email, title} = req.params
+
+        // if the user is trying to change the title of their plan, make sure they have no OTHER plans with the new title
+        let query
+        let params
+        if (req.body.title && title !== req.body.title) { // if they are changing the title and its not the same as the this record's current title
+            query = "SELECT COUNT(*) AS num_rows FROM workout_plan WHERE user_email = ? AND title = ?"
+            params = [user_email, req.body.title]
+            con.query(query, params, (err, results, fields) => {
+                // internal server error handling
+                if (err) {
+                    console.error(err)
+                    res.sendStatus(500)
+                    return con.rollback(() => {
+                        throw err
+                    })
+                }
+
+                const count = results[0].num_rows
+                if (count > 0) {
+                    res.json({
+                        "Status": "Bad Request",
+                        "Response": "You already have a workout plan with this title"
+                    })
+                    return con.rollback(() => {
+                        throw err
+                    })
+                }
+            })
+        }
+
+        // prevent changing the user_email and creation_date
+        const entries = Object.entries(req.body).filter(([key, value]) => key !== "user_email" && key !== "creation_date")
+
+        // update the plan
         const paramsStr = createPutParamsString(entries)
-        const params = entries.map(entry => entry[1])
-        params.push(parseInt(id))
-        const query = `UPDATE workout_plan SET ${paramsStr} WHERE id = ?`
+        params = entries.map(entry => entry[1])
+        params = [...params, user_email, title]
+        query = `UPDATE workout_plan SET ${paramsStr} WHERE user_email = ? AND title = ?`
 
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
                 console.error(err)
                 res.sendStatus(500)
-                con.destroy() // destory connection if still alive
-            } else {
-                res.json({
-                    "Status": "OK",
-                    "Response": [req.body]
-                })
-                // gracefully end connection after sending data, if error destroy connection (force close)
-                con.end((err) => {
-                    if (err) {
-                        console.error(err)
-                        con.destroy()
-                    }
+                return con.rollback(() => {
+                    throw err
                 })
             }
+
+            con.commit((err) => {
+                if (err) {
+                    console.error(err)
+                    res.sendStatus(500)
+                    return con.rollback(() => {
+                        throw err
+                    })
+                }
+            })
+
+            res.json({
+                "Status": "OK",
+                "Response": [req.body]
+            })
+
+            // gracefully end connection after sending data, if error destroy connection (force close)
+            con.end((err) => {
+                if (err) {
+                    console.error(err)
+                    con.destroy()
+                }
+            })
         })
     }) 
 })
 
-app.delete('/plans/:id', isAuth, (req, res) => {
+app.delete('/plans/:user_email/:title', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.connect((err) => {
         // get the plan id
-        const {id} = req.params
+        const {user_email, title} = req.params
         
-        const query = "DELETE FROM workout_plan WHERE id = ?"
+        const query = "DELETE FROM workout_plan WHERE user_email = ? AND title = ?"
 
-        con.query(query, [parseInt(id)], (err, results, fields) => {
+        con.query(query, [user_email, title], (err, results, fields) => {
             // internal server error handling
             if (err) {
                 console.error(err)
@@ -394,7 +479,7 @@ app.delete('/plans/:id', isAuth, (req, res) => {
 // Goals
 app.get('/goals', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
-    con.connect((err) => {
+    con.beginTransaction((err) => {
         const {user_email} = req.body
 
         // Get all the users goal records, and get all the specific types of goals in parallel with Promises
@@ -403,7 +488,9 @@ app.get('/goals', isAuth, (req, res) => {
             if (err) {
                 console.error(err)
                 res.sendStatus(500)
-                con.destroy() // destory connection if still alive
+                return con.rollback(() => {
+                    throw err
+                })
             } else {
                 // Get the IDs for all the queried goals, and split them into 4 arrays
                 const misc_goal_ids = []
@@ -427,8 +514,9 @@ app.get('/goals', isAuth, (req, res) => {
                         default:
                             console.error(`Invalid goal type: ${goal.type}`)
                             res.sendStatus(400)
-                            con.destroy()
-                            return
+                            return con.rollback(() => {
+                                throw err
+                            })
                     }
                 })
 
@@ -471,6 +559,16 @@ app.get('/goals', isAuth, (req, res) => {
                 // Run all the queries in parallel and return their aggregated results as a json response
                 Promise.all(promises)
                     .then((resultsArray) => {
+                        con.commit((err) => {
+                            if (err) {
+                                console.error(err)
+                                res.sendStatus(500)
+                                return con.rollback(() => {
+                                    throw err
+                                })
+                            }
+                        })
+
                         // Send the combined results as a JSON response
                         res.json({
                             "Status": "OK",
@@ -485,6 +583,9 @@ app.get('/goals', isAuth, (req, res) => {
                     .catch((err) => {
                         console.error(err)
                         res.sendStatus(500)
+                        return con.rollback(() => {
+                            throw err
+                        })
                     })
                     .finally(() => {
                         // gracefully end connection after sending data, if error destroy connection (force close)
@@ -570,6 +671,14 @@ app.post('/goals', isAuth, (req, res) => {
                     "Status": "OK",
                     "Response": [req.body]
                 })
+
+                // gracefully end connection after sending data, if error destroy connection (force close)
+                con.end((err) => {
+                    if (err) {
+                        console.error(err)
+                        con.destroy()
+                    }
+                })
             })
         })
     }) 
@@ -646,56 +755,45 @@ app.put('/goals/:id', isAuth, (req, res) => {
             "Status": "OK",
             "Response": [req.body]
         })
+
+        // gracefully end connection after sending data, if error destroy connection (force close)
+        con.end((err) => {
+            if (err) {
+                console.error(err)
+                con.destroy()
+            }
+        })
     }) 
 })
 
 app.delete('/goals/:id', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
-    con.beginTransaction((err) => { // Use a transaction since we are querying two tables
+    con.connect((err) => {
         // get the goal id
         const {id} = req.params
-        // store the type value
-        const {type} = req.body
 
-        // delete the goal from both tables (goals and the specific goal type's table)
+        // delete the goal (cascade set for the specific goal type's table, so we only need to delete from goal table)
         let query = `DELETE FROM goal WHERE id = ?`
 
         con.query(query, [parseInt(id)], (err, results, fields) => {
+            // internal server error handling
             if (err) {
                 console.error(err)
                 res.sendStatus(500)
-                return con.rollback(() => {
-                    throw err
+                con.destroy() // destory connection if still alive
+            } else {
+                res.json({
+                    "Status": "OK",
+                    "Response": [req.body]
+                })
+                // gracefully end connection after sending data, if error destroy connection (force close)
+                con.end((err) => {
+                    if (err) {
+                        console.error(err)
+                        con.destroy()
+                    }
                 })
             }
-        })
-
-        const table_name = `${type}_goal`
-        query = `DELETE FROM ${table_name} WHERE goal_id = ?`
-
-        con.query(query, [parseInt(id)], (err, results, fields) => {
-            if (err) {
-                console.error(err)
-                res.sendStatus(500)
-                return con.rollback(() => {
-                    throw err
-                })
-            }
-        })
-
-        con.commit((err) => {
-            if (err) {
-                console.error(err)
-                res.sendStatus(500)
-                return con.rollback(() => {
-                    throw err
-                })
-            }
-        })
-
-        res.json({
-            "Status": "OK",
-            "Response": [req.body]
         })
     }) 
 })
