@@ -185,8 +185,8 @@ app.put('/exercises/:id', isAuth, (req, res) => {
         // store the exercise_type value and add all the other included values to params
         const {exercise_type} = req.body
         const entries = Object.entries(req.body).filter(([key, value]) => key !== "exercise_type")
-        const paramsStr = createPutParamsString(entries.length)
-        const params = entries.flat()
+        const paramsStr = createPutParamsString(entries)
+        const params = entries.map(entry => entry[1])
         params.push(parseInt(id))
         
         let query = null
@@ -274,10 +274,10 @@ app.listen(port, () => {
 // utility functions
 
 // Add each pair of [columnName, newValue] to the string using SQL syntax
-function createPutParamsString(length) {
+function createPutParamsString(entries) {
     str = ""
-    for (let i = 0; i < length; i++) {
-        str += "? = ?, "
+    for (let i = 0; i < entries.length; i++) {
+        str += `${entries[i][0]} = ?, `
     }
     str = str.slice(0, -2)
     return str
