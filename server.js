@@ -150,8 +150,8 @@ app.post('/exercises', isAuth, (req, res) => {
         } else {    // invalid
             res.sendStatus(400)
             con.destroy()
-            return
         }
+
         if (query) {
             con.query(query, params, (err, results, fields) => {
                 // internal server error handling
@@ -795,6 +795,172 @@ app.delete('/goals/:id', isAuth, (req, res) => {
                 })
             }
         })
+    }) 
+})
+
+// Workout Plan Exercises
+app.get('/workout-plan-exercises', isAuth, (req, res) => {
+    con = mysql.createConnection(dbConfig) // create new connection to db for query
+    con.beginTransaction((err) => {
+        const {user_email, workout_plan_title} = req.body
+
+        // Each promise runs a separate query. Gets the weight exercises and the endurance exercises corresponding to this plan
+        // using an INNER JOIN
+        const promises = [
+            new Promise((resolve, reject) => {
+                con.query(`SELECT * FROM weight_exercise INNER JOIN workout_plan_weight_exercise \
+                    ON weight_exercise.id = workout_plan_weight_exercise.weight_exercise_id WHERE \
+                    workout_plan_weight_exercise.user_email = ? AND workout_plan_weight_exercise.workout_plan_title = ?`,
+                    [user_email, workout_plan_title], (err, results, fields) => {
+                    if (err) reject(err)
+                    else resolve(results)
+                });
+            }),
+            new Promise((resolve, reject) => {
+                con.query(`SELECT * FROM endurance_exercise INNER JOIN workout_plan_endurance_exercise \
+                    ON endurance_exercise.id = workout_plan_endurance_exercise.endurance_exercise_id WHERE \
+                    workout_plan_endurance_exercise.user_email = ? AND workout_plan_endurance_exercise.workout_plan_title = ?`,
+                    [user_email, workout_plan_title], (err, results, fields) => {
+                    if (err) reject(err)
+                    else resolve(results)
+                });
+            })
+        ];
+
+        // Run all the queries in parallel and return their aggregated results as a json response
+        Promise.all(promises)
+            .then((resultsArray) => {
+                con.commit((err) => {
+                    if (err) {
+                        console.error(err)
+                        res.sendStatus(500)
+                        return con.rollback(() => {
+                            throw err
+                        })
+                    }
+                })
+
+                // Send the combined results as a JSON response
+                res.json({
+                    "Status": "OK",
+                    "Response": {
+                        "weight_exercises": resultsArray[0],
+                        "endurance_exercises": resultsArray[1]
+                    }
+                })
+            })
+            .catch((err) => {
+                console.error(err)
+                res.sendStatus(500)
+                return con.rollback(() => {
+                    throw err
+                })
+            })
+            .finally(() => {
+                // gracefully end connection after sending data, if error destroy connection (force close)
+                con.end((err) => {
+                    if (err) {
+                        console.error(err)
+                        con.destroy()
+                    }
+                })
+            })
+    }) 
+})
+
+app.post('/workout-plan-exercises', isAuth, (req, res) => {
+    con = mysql.createConnection(dbConfig) // create new connection to db for query
+    con.connect((err) => {
+        // store the exercise_type value and add all the other included values to params
+        const {exercise_type} = req.body
+        const {user_email, workout_plan_title, exercise_id} = req.body
+
+        // check for valid exercise type
+        let table_name = null
+        if (exercise_type === "endurance") { // endurance exercise
+            table_name = "workout_plan_endurance_exercise"
+        } else if (exercise_type === "weight") { // weight exercise
+            table_name = "workout_plan_weight_exercise"
+        } else {    // invalid
+            res.sendStatus(400)
+            con.destroy()
+        }
+
+        if (table_name) {
+            const query = `INSERT INTO ${table_name} (user_email, workout_plan_title, exercise_id) VALUES (?, ?, ?)`
+            const params = [user_email, workout_plan_title, exercise_id]
+            con.query(query, params, (err, results, fields) => {
+                // internal server error handling
+                if (err) {
+                    console.error(err)
+                    res.sendStatus(500)
+                    con.destroy() // destory connection if still alive
+                } else {
+                    res.json({
+                        "Status": "OK",
+                        "Response": [req.body]
+                    })
+                    // gracefully end connection after sending data, if error destroy connection (force close)
+                    con.end((err) => {
+                        if (err) {
+                            console.error(err)
+                            con.destroy()
+                        }
+                    })
+                }
+            })
+        }
+    }) 
+})
+
+// NOTE: there is not put for workout-plan-exercises because all the columns are the PK, and these are only affected in these tables through CASCADE
+
+app.delete('/workout-plan-exercises/:user_email/:workout_plan_title/:exercise_id', isAuth, (req, res) => {
+    con = mysql.createConnection(dbConfig) // create new connection to db for query
+    con.connect((err) => {
+        // get the workout plan exercise's PK attributes
+        const {user_email, workout_plan_title, exercise_id} = req.params
+
+        // get the exercise type so we know which table to delete from
+        const {exercise_type} = req.body
+
+        // check for valid exercise type
+        let table_name = null
+        if (exercise_type === "endurance") { // endurance exercise
+            table_name = "workout_plan_endurance_exercise"
+        } else if (exercise_type === "weight") { // weight exercise
+            table_name = "workout_plan_weight_exercise"
+        } else {    // invalid
+            res.sendStatus(400)
+            con.destroy()
+        }
+
+        // delete the workout plan exercise from the corresponding table
+        if (table_name) {
+            const query = `DELETE FROM ${table_name} WHERE user_email = ? AND workout_plan_title = ? AND exercise_id = ?`
+            const params = [user_email, workout_plan_title, exercise_id]
+
+            con.query(query, params, (err, results, fields) => {
+                // internal server error handling
+                if (err) {
+                    console.error(err)
+                    res.sendStatus(500)
+                    con.destroy() // destory connection if still alive
+                } else {
+                    res.json({
+                        "Status": "OK",
+                        "Response": [req.body]
+                    })
+                    // gracefully end connection after sending data, if error destroy connection (force close)
+                    con.end((err) => {
+                        if (err) {
+                            console.error(err)
+                            con.destroy()
+                        }
+                    })
+                }
+            })
+        }
     }) 
 })
 
