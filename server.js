@@ -783,8 +783,7 @@ app.delete('/goals/:id', isAuth, (req, res) => {
                 con.destroy() // destory connection if still alive
             } else {
                 res.json({
-                    "Status": "OK",
-                    "Response": [req.body]
+                    "Status": "OK"
                 })
                 // gracefully end connection after sending data, if error destroy connection (force close)
                 con.end((err) => {
