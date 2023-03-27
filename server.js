@@ -604,7 +604,7 @@ app.post('/goals', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.beginTransaction((err) => { // Use a transaction since we are querying two tables
         // store the exercise_type value and add all the other included values to params
-        const {user_email, type, deadline, description, exercise_name, time, sets, reps, weight, start_weight, goal_weight} = req.body
+        const {user_email, type, deadline, description, exercise_id, time, sets, reps, weight, start_weight, goal_weight} = req.body
         const completed = 0
         const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ')
         let query = "INSERT INTO goal (user_email, type, deadline, completed, creation_date) VALUES (?, ?, ?, ?, ?); SELECT LAST_INSERT_ID() AS id;"
@@ -629,11 +629,11 @@ app.post('/goals', isAuth, (req, res) => {
                     break
                 case "endurance":
                     query = "INSERT INTO endurance_goal (goal_id, exercise_name, time) VALUES (?, ?, ?)"
-                    params = [id, exercise_name, time]
+                    params = [id, exercise_id, time]
                     break
                 case "weight":
                     query = "INSERT INTO weight_goal (goal_id, exercise_name, sets, reps, weight) VALUES (?, ?, ?, ?, ?)"
-                    params = [id, exercise_name, sets, reps, weight]
+                    params = [id, exercise_id, sets, reps, weight]
                     break
                 case "body_weight":
                     query = "INSERT INTO body_weight_goal (goal_id, start_weight, goal_weight) VALUES (?, ?, ?)"
