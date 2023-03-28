@@ -306,10 +306,10 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                console.error(err)
-                res.sendStatus(500)
-                con.rollback()
-                con.destroy()
+                return con.rollback(() => {
+                    console.error(err)
+                    res.sendStatus(500)
+                })
             }
 
             const count = results[0].num_rows
@@ -318,7 +318,9 @@ app.post('/plans', isAuth, (req, res) => {
                     "Status": "Bad Request",
                     "Response": "You already have a workout plan with this title"
                 })
-                con.rollback()
+                return con.rollback(() => {
+                    res.sendStatus(400)
+                })
             }
         })
 
