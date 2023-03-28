@@ -367,14 +367,12 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
         // if the user is trying to change the title of their plan, make sure they have no OTHER plans with the new title
         let query
         let params
-        let failed = false
         if (req.body.title && title !== req.body.title) { // if they are changing the title and its not the same as the this record's current title
             query = "SELECT COUNT(*) AS num_rows FROM workout_plan WHERE user_email = ? AND title = ?"
             params = [user_email, req.body.title]
             con.query(query, params, (err, results, fields) => {
                 // internal server error handling
                 if (err) {
-                    failed = true
                     return con.rollback(() => {
                         console.error(err)
                         res.sendStatus(500)
@@ -384,22 +382,58 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
 
                 const count = results[0].num_rows
                 if (count > 0) {
-                    failed = true
                     return con.rollback(() => {
                         console.error(err)
                         res.status(400).send("User already has a workout plan with this title")
                         con.destroy()
                     })
                 }
-            })
-        }
 
-        if (!failed) {
+                // Now, update the plan
+
+                // prevent changing the user_email and creation_date
+                const entries = Object.entries(req.body).filter(([key, value]) => key !== "user_email" && key !== "creation_date")
+
+                const paramsStr = createPutParamsString(entries)
+                params = entries.map(entry => entry[1])
+                params = [...params, user_email, title]
+                query = `UPDATE workout_plan SET ${paramsStr} WHERE user_email = ? AND title = ?`
+
+                con.query(query, params, (err, results, fields) => {
+                    // internal server error handling
+                    if (err) {
+                        return con.rollback(() => {
+                            console.error(err)
+                            res.sendStatus(500)
+                            con.destroy()
+                        })
+                    }
+
+                    con.commit((err) => {
+                        if (err) {
+                            return con.rollback(() => {
+                                console.error(err)
+                                res.sendStatus(500)
+                                con.destroy()
+                            })
+                        }
+            
+                        res.json({
+                            "Status": "OK",
+                            "Response": [req.body]
+                        })
+
+                        con.destroy()
+                    })
+                })
+            })
+
+        } else {
+            // update the plan
 
             // prevent changing the user_email and creation_date
             const entries = Object.entries(req.body).filter(([key, value]) => key !== "user_email" && key !== "creation_date")
 
-            // update the plan
             const paramsStr = createPutParamsString(entries)
             params = entries.map(entry => entry[1])
             params = [...params, user_email, title]
