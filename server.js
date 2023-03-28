@@ -914,7 +914,7 @@ app.post('/workout-plan-exercises', isAuth, (req, res) => {
         }
 
         if (table_name) {
-            const query = `INSERT INTO ${table_name} (user_email, workout_plan_title, exercise_id) VALUES (?, ?, ?)`
+            const query = `INSERT INTO ${table_name} (user_email, workout_plan_title, ${exercise_type}_exercise_id) VALUES (?, ?, ?)`
             const params = [user_email, workout_plan_title, exercise_id]
             con.query(query, params, (err, results, fields) => {
                 // internal server error handling
@@ -964,7 +964,7 @@ app.delete('/workout-plan-exercises/:user_email/:workout_plan_title/:exercise_id
 
         // delete the workout plan exercise from the corresponding table
         if (table_name) {
-            const query = `DELETE FROM ${table_name} WHERE user_email = ? AND workout_plan_title = ? AND exercise_id = ?`
+            const query = `DELETE FROM ${table_name} WHERE user_email = ? AND workout_plan_title = ? AND ${exercise_type}_exercise_id = ?`
             const params = [user_email, workout_plan_title, exercise_id]
 
             con.query(query, params, (err, results, fields) => {
