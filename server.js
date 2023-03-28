@@ -307,62 +307,49 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                con.rollback(() => {
-                    console.error(err)
-                    res.sendStatus(500)
-                    failed = true
-                })
-            }
-
-            const count = results[0].num_rows
-            if (count > 0) {
-                con.rollback(() => {
-                    console.error(err)
-                    res.status(400).send("User already has a workout plan with this title")
-                    failed = true
-                })
-            }
-        })
-
-        if (failed) {
-            // gracefully end connection after sending data, if error destroy connection (force close)
-            con.end((err) => {
-                if (err) {
-                    console.error(err)
-                    con.destroy()
-                }
-            })
-            return
-        }
-
-        const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ');
-        query = "INSERT INTO workout_plan (user_email, title, days_of_week, creation_date) VALUES (?, ?, ?, ?)"
-        params = [user_email, title, days_of_week, creation_date]
-        
-        con.query(query, params, (err, results, fields) => {
-            // internal server error handling
-            if (err) {
                 return con.rollback(() => {
                     console.error(err)
                     res.sendStatus(500)
                 })
             }
 
-            con.commit((err) => {
+            const count = results[0].num_rows
+            if (count > 0) {
+                return con.rollback(() => {
+                    console.error(err)
+                    res.status(400).send("User already has a workout plan with this title")
+                })
+            }
+
+            const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            query = "INSERT INTO workout_plan (user_email, title, days_of_week, creation_date) VALUES (?, ?, ?, ?)"
+            params = [user_email, title, days_of_week, creation_date]
+            
+            con.query(query, params, (err, results, fields) => {
+                // internal server error handling
                 if (err) {
-                    con.rollback(() => {
+                    return con.rollback(() => {
                         console.error(err)
                         res.sendStatus(500)
                     })
                 }
-    
-                res.json({
-                    "Status": "OK",
-                    "Response": [req.body]
+
+                con.commit((err) => {
+                    if (err) {
+                        return con.rollback(() => {
+                            console.error(err)
+                            res.sendStatus(500)
+                        })
+                    }
+        
+                    res.json({
+                        "Status": "OK",
+                        "Response": [req.body]
+                    })
                 })
             })
         })
-
+        
         // gracefully end connection after sending data, if error destroy connection (force close)
         con.end((err) => {
             if (err) {
