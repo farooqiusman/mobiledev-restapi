@@ -303,13 +303,14 @@ app.post('/plans', isAuth, (req, res) => {
         // first check that this user has no plans with the given title
         let query = "SELECT COUNT(*) AS num_rows FROM workout_plan WHERE user_email = ? AND title = ?"
         let params = [user_email, title]
+        let failed = false
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
                 con.rollback(() => {
                     console.error(err)
-                    res.status(500).send("Internal Server Error")
-                    res.end()
+                    res.sendStatus(500)
+                    failed = true
                 })
             }
 
@@ -318,10 +319,21 @@ app.post('/plans', isAuth, (req, res) => {
                 con.rollback(() => {
                     console.error(err)
                     res.status(400).send("User already has a workout plan with this title")
-                    res.end()
+                    failed = true
                 })
             }
         })
+
+        if (failed) {
+            // gracefully end connection after sending data, if error destroy connection (force close)
+            con.end((err) => {
+                if (err) {
+                    console.error(err)
+                    con.destroy()
+                }
+            })
+            return
+        }
 
         const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ');
         query = "INSERT INTO workout_plan (user_email, title, days_of_week, creation_date) VALUES (?, ?, ?, ?)"
@@ -330,24 +342,24 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                con.rollback(() => {
+                return con.rollback(() => {
                     console.error(err)
-                    res.status(500).send("Internal Server Error")
-                })
-            }
-        })
-
-        con.commit((err) => {
-            if (err) {
-                con.rollback(() => {
-                    console.error(err)
-                    res.status(500).send("Internal Server Error")
+                    res.sendStatus(500)
                 })
             }
 
-            res.json({
-                "Status": "OK",
-                "Response": [req.body]
+            con.commit((err) => {
+                if (err) {
+                    con.rollback(() => {
+                        console.error(err)
+                        res.sendStatus(500)
+                    })
+                }
+    
+                res.json({
+                    "Status": "OK",
+                    "Response": [req.body]
+                })
             })
         })
 
