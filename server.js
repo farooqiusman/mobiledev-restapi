@@ -303,9 +303,13 @@ app.post('/plans', isAuth, (req, res) => {
         // first check that this user has no plans with the given title
         let query = "SELECT COUNT(*) AS num_rows FROM workout_plan WHERE user_email = ? AND title = ?"
         let params = [user_email, title]
+        
         con.query(query, params, (err, results, fields) => {
+            let failed = false
+
             // internal server error handling
             if (err) {
+                failed = true
                 return con.rollback(() => {
                     console.error(err)
                     res.sendStatus(500)
@@ -316,12 +320,19 @@ app.post('/plans', isAuth, (req, res) => {
 
             const count = results[0].num_rows
             if (count > 0) {
+                failed = true
                 return con.rollback(() => {
                     console.error(err)
                     res.status(400).send("User already has a workout plan with this title")
                     con.destroy()
                 })
             }
+
+            console.log(`Failed: ${failed}`)
+
+            if (failed) return
+
+            console.log("test")
 
             const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ');
             query = "INSERT INTO workout_plan (user_email, title, days_of_week, creation_date) VALUES (?, ?, ?, ?)"
