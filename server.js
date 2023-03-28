@@ -348,16 +348,16 @@ app.post('/plans', isAuth, (req, res) => {
                     })
                 })
             })
-
-            // gracefully end connection after sending data, if error destroy connection (force close)
-            con.end((err) => {
-                if (err) {
-                    console.error(err)
-                    con.destroy()
-                }
-            })
         })
-    }) 
+    })
+    
+    // gracefully end connection after sending data, if error destroy connection (force close)
+    con.end((err) => {
+        if (err) {
+            console.error(err)
+            con.destroy()
+        }
+    })
 })
 
 app.put('/plans/:user_email/:title', isAuth, (req, res) => {
