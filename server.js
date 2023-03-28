@@ -309,6 +309,7 @@ app.post('/plans', isAuth, (req, res) => {
                 con.rollback(() => {
                     console.error(err)
                     res.status(500).send("Internal Server Error")
+                    res.end()
                 })
             }
 
@@ -317,6 +318,7 @@ app.post('/plans', isAuth, (req, res) => {
                 con.rollback(() => {
                     console.error(err)
                     res.status(400).send("User already has a workout plan with this title")
+                    res.end()
                 })
             }
         })
