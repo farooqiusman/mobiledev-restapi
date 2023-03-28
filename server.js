@@ -306,10 +306,9 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                con.rollback(() => {
-                    console.error(err)
-                    return res.sendStatus(500)
-                })
+                console.error(err)
+                res.sendStatus(500)
+                return con.rollback()
             }
 
             const count = results[0].num_rows
