@@ -308,7 +308,8 @@ app.post('/plans', isAuth, (req, res) => {
             if (err) {
                 console.error(err)
                 res.sendStatus(500)
-                return con.rollback()
+                con.rollback()
+                con.destroy()
             }
 
             const count = results[0].num_rows
