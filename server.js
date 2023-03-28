@@ -724,7 +724,7 @@ app.put('/goals/:id', isAuth, (req, res) => {
         const goal_entries = []
         const specific_goal_entries = []
         entries.forEach(([key, value]) => {
-            if (key in ["user_email", "deadline", "completed"]) {
+            if (["user_email", "deadline", "completed"].includes(key)) {
                 goal_entries.push([key, value])
             } else {
                 specific_goal_entries.push([key, value])
