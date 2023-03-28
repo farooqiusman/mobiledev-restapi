@@ -524,7 +524,7 @@ app.get('/goals', isAuth, (req, res) => {
                     new Promise((resolve, reject) => {
                         if (misc_goal_ids.length > 0) {
                             const idListStr = createIdListParamStr(misc_goal_ids)
-                            con.query(`SELECT * FROM goal INNER JOIN misc_goal ON goal.id = misc_goal.id WHERE goal_id IN ${idListStr}`,
+                            con.query(`SELECT * FROM goal INNER JOIN misc_goal ON goal.id = misc_goal.goal_id WHERE misc_goal.goal_id IN ${idListStr}`,
                                 misc_goal_ids, (err, results, fields) => {
                                 if (err) reject(err)
                                 else resolve(results)
@@ -536,7 +536,7 @@ app.get('/goals', isAuth, (req, res) => {
                     new Promise((resolve, reject) => {
                         if (endurance_goal_ids.length > 0) {
                             const idListStr = createIdListParamStr(endurance_goal_ids)
-                            con.query(`SELECT * FROM goal INNER JOIN endurance_goal ON goal.id = endurance_goal.id WHERE goal_id IN ${idListStr}`,
+                            con.query(`SELECT * FROM goal INNER JOIN endurance_goal ON goal.id = endurance_goal.goal_id WHERE endurance_goal.goal_id IN ${idListStr}`,
                                 endurance_goal_ids, (err, results, fields) => {
                                 if (err) reject(err)
                                 else resolve(results)
@@ -548,7 +548,7 @@ app.get('/goals', isAuth, (req, res) => {
                     new Promise((resolve, reject) => {
                         if (weight_goal_ids.length > 0) {
                             const idListStr = createIdListParamStr(weight_goal_ids)
-                            con.query(`SELECT * FROM goal INNER JOIN weight_goal ON goal.id = weight_goal.id WHERE goal_id IN ${idListStr}`,
+                            con.query(`SELECT * FROM goal INNER JOIN weight_goal ON goal.id = weight_goal.goal_id WHERE weight_goal.goal_id IN ${idListStr}`,
                                 weight_goal_ids, (err, results, fields) => {
                                 if (err) reject(err)
                                 else resolve(results)
@@ -560,7 +560,7 @@ app.get('/goals', isAuth, (req, res) => {
                     new Promise((resolve, reject) => {
                         if (body_weight_goal_ids.length > 0) {
                             const idListStr = createIdListParamStr(body_weight_goal_ids)
-                            con.query(`SELECT * FROM goal INNER JOIN body_weight_goal ON goal.id = body_weight_goal.id WHERE goal_id IN ${idListStr}`,
+                            con.query(`SELECT * FROM goal INNER JOIN body_weight_goal ON goal.id = body_weight_goal.goal_id WHERE body_weight_goal.goal_id IN ${idListStr}`,
                                 body_weight_goal_ids, (err, results, fields) => {
                                 if (err) reject(err)
                                 else resolve(results)
