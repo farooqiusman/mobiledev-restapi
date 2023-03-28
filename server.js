@@ -303,7 +303,6 @@ app.post('/plans', isAuth, (req, res) => {
         // first check that this user has no plans with the given title
         let query = "SELECT COUNT(*) AS num_rows FROM workout_plan WHERE user_email = ? AND title = ?"
         let params = [user_email, title]
-        let failed = false
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
@@ -349,7 +348,7 @@ app.post('/plans', isAuth, (req, res) => {
                 })
             })
         })
-        
+
         // gracefully end connection after sending data, if error destroy connection (force close)
         con.end((err) => {
             if (err) {
@@ -369,9 +368,42 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
         // if the user is trying to change the title of their plan, make sure they have no OTHER plans with the new title
         let query
         let params
+        let failed = false
         if (req.body.title && title !== req.body.title) { // if they are changing the title and its not the same as the this record's current title
             query = "SELECT COUNT(*) AS num_rows FROM workout_plan WHERE user_email = ? AND title = ?"
             params = [user_email, req.body.title]
+            con.query(query, params, (err, results, fields) => {
+                // internal server error handling
+                if (err) {
+                    failed = true
+                    return con.rollback(() => {
+                        console.error(err)
+                        res.sendStatus(500)
+                    })
+                }
+
+                const count = results[0].num_rows
+                if (count > 0) {
+                    failed = true
+                    return con.rollback(() => {
+                        console.error(err)
+                        res.status(400).send("User already has a workout plan with this title")
+                    })
+                }
+            })
+        }
+
+        if (!failed) {
+
+            // prevent changing the user_email and creation_date
+            const entries = Object.entries(req.body).filter(([key, value]) => key !== "user_email" && key !== "creation_date")
+
+            // update the plan
+            const paramsStr = createPutParamsString(entries)
+            params = entries.map(entry => entry[1])
+            params = [...params, user_email, title]
+            query = `UPDATE workout_plan SET ${paramsStr} WHERE user_email = ? AND title = ?`
+
             con.query(query, params, (err, results, fields) => {
                 // internal server error handling
                 if (err) {
@@ -381,58 +413,28 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
                     })
                 }
 
-                const count = results[0].num_rows
-                if (count > 0) {
+                con.commit((err) => {
+                    if (err) {
+                        return con.rollback(() => {
+                            console.error(err)
+                            res.sendStatus(500)
+                        })
+                    }
+        
                     res.json({
-                        "Status": "Bad Request",
-                        "Response": "You already have a workout plan with this title"
+                        "Status": "OK",
+                        "Response": [req.body]
                     })
-                    return con.rollback(() => {
-                        res.sendStatus(400)
-                    })
-                }
+                })
             })
         }
 
-        // prevent changing the user_email and creation_date
-        const entries = Object.entries(req.body).filter(([key, value]) => key !== "user_email" && key !== "creation_date")
-
-        // update the plan
-        const paramsStr = createPutParamsString(entries)
-        params = entries.map(entry => entry[1])
-        params = [...params, user_email, title]
-        query = `UPDATE workout_plan SET ${paramsStr} WHERE user_email = ? AND title = ?`
-
-        con.query(query, params, (err, results, fields) => {
-            // internal server error handling
+        // gracefully end connection after sending data, if error destroy connection (force close)
+        con.end((err) => {
             if (err) {
-                return con.rollback(() => {
-                    console.error(err)
-                    res.sendStatus(500)
-                })
+                console.error(err)
+                con.destroy()
             }
-
-            con.commit((err) => {
-                if (err) {
-                    return con.rollback(() => {
-                        console.error(err)
-                        res.sendStatus(500)
-                    })
-                }
-            })
-
-            res.json({
-                "Status": "OK",
-                "Response": [req.body]
-            })
-
-            // gracefully end connection after sending data, if error destroy connection (force close)
-            con.end((err) => {
-                if (err) {
-                    console.error(err)
-                    con.destroy()
-                }
-            })
         })
     }) 
 })
@@ -481,104 +483,104 @@ app.get('/goals', isAuth, (req, res) => {
                     console.error(err)
                     res.sendStatus(500)
                 })
-            } else {
-                // Get the IDs for all the queried goals, and split them into 4 arrays
-                const misc_goal_ids = []
-                const endurance_goal_ids = []
-                const weight_goal_ids = []
-                const body_weight_goal_ids = []
-                results.forEach(goal => {
-                    switch (goal.type) {
-                        case "misc":
-                            misc_goal_ids.push(goal.id)
-                            break
-                        case "endurance":
-                            endurance_goal_ids.push(goal.id)
-                            break
-                        case "weight":
-                            weight_goal_ids.push(goal.id)
-                            break
-                        case "body_weight":
-                            body_weight_goal_ids.push(goal.id)
-                            break
-                        default:
-                            return con.rollback(() => {
-                                console.error(`Invalid goal type: ${goal.type}`)
-                                res.sendStatus(400)
-                            })
+            }
+
+            // Get the IDs for all the queried goals, and split them into 4 arrays
+            const misc_goal_ids = []
+            const endurance_goal_ids = []
+            const weight_goal_ids = []
+            const body_weight_goal_ids = []
+            results.forEach(goal => {
+                switch (goal.type) {
+                    case "misc":
+                        misc_goal_ids.push(goal.id)
+                        break
+                    case "endurance":
+                        endurance_goal_ids.push(goal.id)
+                        break
+                    case "weight":
+                        weight_goal_ids.push(goal.id)
+                        break
+                    case "body_weight":
+                        body_weight_goal_ids.push(goal.id)
+                        break
+                    default:
+                        return con.rollback(() => {
+                            console.error(`Invalid goal type: ${goal.type}`)
+                            res.sendStatus(400)
+                        })
+                }
+            })
+
+            // Each promise runs a separate query
+            const promises = [
+                new Promise((resolve, reject) => {
+                    if (misc_goal_ids.length > 0) {
+                        const idListStr = createIdListParamStr(misc_goal_ids)
+                        con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, misc_goal.description \
+                        FROM goal INNER JOIN misc_goal ON goal.id = misc_goal.goal_id WHERE misc_goal.goal_id IN ${idListStr}`,
+                            misc_goal_ids, (err, results, fields) => {
+                            if (err) reject(err)
+                            else resolve(results)
+                        });
+                    } else {
+                        resolve([])
+                    }
+                }),
+                new Promise((resolve, reject) => {
+                    if (endurance_goal_ids.length > 0) {
+                        const idListStr = createIdListParamStr(endurance_goal_ids)
+                        con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, \
+                        endurance_goal.exercise_id, endurance_goal.time FROM goal INNER JOIN endurance_goal ON goal.id = endurance_goal.goal_id \
+                        WHERE endurance_goal.goal_id IN ${idListStr}`,
+                            endurance_goal_ids, (err, results, fields) => {
+                            if (err) reject(err)
+                            else resolve(results)
+                        });
+                    } else {
+                        resolve([])
+                    }
+                }),
+                new Promise((resolve, reject) => {
+                    if (weight_goal_ids.length > 0) {
+                        const idListStr = createIdListParamStr(weight_goal_ids)
+                        con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, \
+                        weight_goal.exercise_id, weight_goal.sets, weight_goal.reps, weight_goal.weight FROM goal INNER JOIN weight_goal \
+                        ON goal.id = weight_goal.goal_id WHERE weight_goal.goal_id IN ${idListStr}`,
+                            weight_goal_ids, (err, results, fields) => {
+                            if (err) reject(err)
+                            else resolve(results)
+                        });
+                    } else {
+                        resolve([])
+                    }
+                }),
+                new Promise((resolve, reject) => {
+                    if (body_weight_goal_ids.length > 0) {
+                        const idListStr = createIdListParamStr(body_weight_goal_ids)
+                        con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, \
+                        body_weight_goal.start_weight, body_weight_goal.goal_weight FROM goal INNER JOIN body_weight_goal \
+                        ON goal.id = body_weight_goal.goal_id WHERE body_weight_goal.goal_id IN ${idListStr}`,
+                            body_weight_goal_ids, (err, results, fields) => {
+                            if (err) reject(err)
+                            else resolve(results)
+                        });
+                    } else {
+                        resolve([])
                     }
                 })
+            ];
 
-                // Each promise runs a separate query
-                const promises = [
-                    new Promise((resolve, reject) => {
-                        if (misc_goal_ids.length > 0) {
-                            const idListStr = createIdListParamStr(misc_goal_ids)
-                            con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, misc_goal.description \
-                            FROM goal INNER JOIN misc_goal ON goal.id = misc_goal.goal_id WHERE misc_goal.goal_id IN ${idListStr}`,
-                                misc_goal_ids, (err, results, fields) => {
-                                if (err) reject(err)
-                                else resolve(results)
-                            });
-                        } else {
-                            resolve([])
+            // Run all the queries in parallel and return their aggregated results as a json response
+            Promise.all(promises)
+                .then((resultsArray) => {
+                    con.commit((err) => {
+                        if (err) {
+                            return con.rollback(() => {
+                                console.error(err)
+                                res.sendStatus(500)
+                            })
                         }
-                    }),
-                    new Promise((resolve, reject) => {
-                        if (endurance_goal_ids.length > 0) {
-                            const idListStr = createIdListParamStr(endurance_goal_ids)
-                            con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, \
-                            endurance_goal.exercise_id, endurance_goal.time FROM goal INNER JOIN endurance_goal ON goal.id = endurance_goal.goal_id \
-                            WHERE endurance_goal.goal_id IN ${idListStr}`,
-                                endurance_goal_ids, (err, results, fields) => {
-                                if (err) reject(err)
-                                else resolve(results)
-                            });
-                        } else {
-                            resolve([])
-                        }
-                    }),
-                    new Promise((resolve, reject) => {
-                        if (weight_goal_ids.length > 0) {
-                            const idListStr = createIdListParamStr(weight_goal_ids)
-                            con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, \
-                            weight_goal.exercise_id, weight_goal.sets, weight_goal.reps, weight_goal.weight FROM goal INNER JOIN weight_goal \
-                            ON goal.id = weight_goal.goal_id WHERE weight_goal.goal_id IN ${idListStr}`,
-                                weight_goal_ids, (err, results, fields) => {
-                                if (err) reject(err)
-                                else resolve(results)
-                            });
-                        } else {
-                            resolve([])
-                        }
-                    }),
-                    new Promise((resolve, reject) => {
-                        if (body_weight_goal_ids.length > 0) {
-                            const idListStr = createIdListParamStr(body_weight_goal_ids)
-                            con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, \
-                            body_weight_goal.start_weight, body_weight_goal.goal_weight FROM goal INNER JOIN body_weight_goal \
-                            ON goal.id = body_weight_goal.goal_id WHERE body_weight_goal.goal_id IN ${idListStr}`,
-                                body_weight_goal_ids, (err, results, fields) => {
-                                if (err) reject(err)
-                                else resolve(results)
-                            });
-                        } else {
-                            resolve([])
-                        }
-                    })
-                ];
-
-                // Run all the queries in parallel and return their aggregated results as a json response
-                Promise.all(promises)
-                    .then((resultsArray) => {
-                        con.commit((err) => {
-                            if (err) {
-                                return con.rollback(() => {
-                                    console.error(err)
-                                    res.sendStatus(500)
-                                })
-                            }
-                        })
 
                         // Send the combined results as a JSON response
                         res.json({
@@ -591,22 +593,22 @@ app.get('/goals', isAuth, (req, res) => {
                             }
                         })
                     })
-                    .catch((err) => {
-                        return con.rollback(() => {
+                })
+                .catch((err) => {
+                    return con.rollback(() => {
+                        console.error(err)
+                        res.sendStatus(500)
+                    })
+                })
+                .finally(() => {
+                    // gracefully end connection after sending data, if error destroy connection (force close)
+                    con.end((err) => {
+                        if (err) {
                             console.error(err)
-                            res.sendStatus(500)
-                        })
+                            con.destroy()
+                        }
                     })
-                    .finally(() => {
-                        // gracefully end connection after sending data, if error destroy connection (force close)
-                        con.end((err) => {
-                            if (err) {
-                                console.error(err)
-                                con.destroy()
-                            }
-                        })
-                    })
-            }
+                })
         })
     }) 
 })
@@ -672,21 +674,21 @@ app.post('/goals', isAuth, (req, res) => {
                             res.sendStatus(500)
                         })
                     }
-                })
 
-                res.json({
-                    "Status": "OK",
-                    "Response": [req.body]
-                })
-
-                // gracefully end connection after sending data, if error destroy connection (force close)
-                con.end((err) => {
-                    if (err) {
-                        console.error(err)
-                        con.destroy()
-                    }
+                    res.json({
+                        "Status": "OK",
+                        "Response": [req.body]
+                    })
                 })
             })
+        })
+
+        // gracefully end connection after sending data, if error destroy connection (force close)
+        con.end((err) => {
+            if (err) {
+                console.error(err)
+                con.destroy()
+            }
         })
     }) 
 })
@@ -724,41 +726,41 @@ app.put('/goals/:id', isAuth, (req, res) => {
                         res.sendStatus(500)
                     })
                 }
-            })
-        }
+
+                if (specific_goal_entries.length > 0) {
+                    const paramsStr = createPutParamsString(specific_goal_entries)
+                    const params = specific_goal_entries.map(entry => entry[1])
+                    params.push(parseInt(id))
         
-        if (specific_goal_entries.length > 0) {
-            const paramsStr = createPutParamsString(specific_goal_entries)
-            const params = specific_goal_entries.map(entry => entry[1])
-            params.push(parseInt(id))
+                    // Get the table name based on type and create the query
+                    const table_name = `${type}_goal`
+                    const query = `UPDATE ${table_name} SET ${paramsStr} WHERE goal_id = ?`
+        
+                    con.query(query, params, (err, results, fields) => {
+                        if (err) {
+                            return con.rollback(() => {
+                                console.error(err)
+                                res.sendStatus(500)
+                            })
+                        }
 
-            // Get the table name based on type and create the query
-            const table_name = `${type}_goal`
-            const query = `UPDATE ${table_name} SET ${paramsStr} WHERE goal_id = ?`
+                        con.commit((err) => {
+                            if (err) {
+                                return con.rollback(() => {
+                                    console.error(err)
+                                    res.sendStatus(500)
+                                })
+                            }
 
-            con.query(query, params, (err, results, fields) => {
-                if (err) {
-                    return con.rollback(() => {
-                        console.error(err)
-                        res.sendStatus(500)
+                            res.json({
+                                "Status": "OK",
+                                "Response": [req.body]
+                            })
+                        })
                     })
                 }
             })
         }
-
-        con.commit((err) => {
-            if (err) {
-                return con.rollback(() => {
-                    console.error(err)
-                    res.sendStatus(500)
-                })
-            }
-        })
-
-        res.json({
-            "Status": "OK",
-            "Response": [req.body]
-        })
 
         // gracefully end connection after sending data, if error destroy connection (force close)
         con.end((err) => {
@@ -842,15 +844,15 @@ app.get('/workout-plan-exercises', isAuth, (req, res) => {
                             res.sendStatus(500)
                         })
                     }
-                })
-
-                // Send the combined results as a JSON response
-                res.json({
-                    "Status": "OK",
-                    "Response": {
-                        "weight_exercises": resultsArray[0],
-                        "endurance_exercises": resultsArray[1]
-                    }
+                    
+                    // Send the combined results as a JSON response
+                    res.json({
+                        "Status": "OK",
+                        "Response": {
+                            "weight_exercises": resultsArray[0],
+                            "endurance_exercises": resultsArray[1]
+                        }
+                    })
                 })
             })
             .catch((err) => {
