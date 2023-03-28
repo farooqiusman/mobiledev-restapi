@@ -309,6 +309,7 @@ app.post('/plans', isAuth, (req, res) => {
                 return con.rollback(() => {
                     console.error(err)
                     res.sendStatus(500)
+                    con.destroy()
                 })
             }
 
@@ -317,6 +318,7 @@ app.post('/plans', isAuth, (req, res) => {
                 return con.rollback(() => {
                     console.error(err)
                     res.status(400).send("User already has a workout plan with this title")
+                    con.destroy()
                 })
             }
 
