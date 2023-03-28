@@ -332,6 +332,7 @@ app.post('/plans', isAuth, (req, res) => {
                     return con.rollback(() => {
                         console.error(err)
                         res.sendStatus(500)
+                        con.destroy()
                     })
                 }
 
@@ -340,6 +341,7 @@ app.post('/plans', isAuth, (req, res) => {
                         return con.rollback(() => {
                             console.error(err)
                             res.sendStatus(500)
+                            con.destroy()
                         })
                     }
         
