@@ -306,20 +306,17 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                return con.rollback(() => {
+                con.rollback(() => {
                     console.error(err)
-                    res.sendStatus(500)
+                    res.status(500).send("Internal Server Error")
                 })
             }
 
             const count = results[0].num_rows
             if (count > 0) {
-                res.json({
-                    "Status": "Bad Request",
-                    "Response": "You already have a workout plan with this title"
-                })
-                return con.rollback(() => {
-                    res.sendStatus(400)
+                con.rollback(() => {
+                    console.error(err)
+                    res.status(400).send("User already has a workout plan with this title")
                 })
             }
         })
@@ -331,25 +328,25 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                return con.rollback(() => {
+                con.rollback(() => {
                     console.error(err)
-                    res.sendStatus(500)
+                    res.status(500).send("Internal Server Error")
                 })
             }
         })
 
         con.commit((err) => {
             if (err) {
-                return con.rollback(() => {
+                con.rollback(() => {
                     console.error(err)
-                    res.sendStatus(500)
+                    res.status(500).send("Internal Server Error")
                 })
             }
-        })
 
-        res.json({
-            "Status": "OK",
-            "Response": [req.body]
+            res.json({
+                "Status": "OK",
+                "Response": [req.body]
+            })
         })
 
         // gracefully end connection after sending data, if error destroy connection (force close)
