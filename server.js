@@ -335,12 +335,16 @@ app.post('/plans', isAuth, (req, res) => {
             console.log("test")
 
             const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            console.log("test2")
             query = "INSERT INTO workout_plan (user_email, title, days_of_week, creation_date) VALUES (?, ?, ?, ?)"
+            console.log("test3")
             params = [user_email, title, days_of_week, creation_date]
             
             con.query(query, params, (err, results, fields) => {
+                console.log("test4")
                 // internal server error handling
                 if (err) {
+                    console.log("test5")
                     return con.rollback(() => {
                         console.error(err)
                         res.sendStatus(500)
@@ -349,6 +353,7 @@ app.post('/plans', isAuth, (req, res) => {
                 }
 
                 con.commit((err) => {
+                    console.log("test6")
                     if (err) {
                         return con.rollback(() => {
                             console.error(err)
@@ -364,6 +369,7 @@ app.post('/plans', isAuth, (req, res) => {
                 })
             })
         })
+        console.log("test7")
 
         // gracefully end connection after sending data, if error destroy connection (force close)
         con.end((err) => {
