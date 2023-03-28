@@ -655,11 +655,11 @@ app.post('/goals', isAuth, (req, res) => {
                         params = [id, description]
                         break
                     case "endurance":
-                        query = "INSERT INTO endurance_goal (goal_id, exercise_name, time) VALUES (?, ?, ?)"
+                        query = "INSERT INTO endurance_goal (goal_id, exercise_id, time) VALUES (?, ?, ?)"
                         params = [id, exercise_id, time]
                         break
                     case "weight":
-                        query = "INSERT INTO weight_goal (goal_id, exercise_name, sets, reps, weight) VALUES (?, ?, ?, ?, ?)"
+                        query = "INSERT INTO weight_goal (goal_id, exercise_id, sets, reps, weight) VALUES (?, ?, ?, ?, ?)"
                         params = [id, exercise_id, sets, reps, weight]
                         break
                     case "body_weight":
