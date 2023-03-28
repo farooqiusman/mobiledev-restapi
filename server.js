@@ -197,8 +197,8 @@ app.put('/exercises/:id', isAuth, (req, res) => {
         } else {    // invalid
             res.sendStatus(400)
             con.destroy()
-            return
         }
+
         if (query) {
             con.query(query, params, (err, results, fields) => {
                 // internal server error handling
@@ -239,8 +239,8 @@ app.delete('/exercises/:id', isAuth, (req, res) => {
         } else {    // invalid
             res.sendStatus(400)
             con.destroy()
-            return
         }
+
         if (query) {
             con.query(query, [parseInt(id)], (err, results, fields) => {
                 // internal server error handling
@@ -306,10 +306,9 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                console.error(err)
-                res.sendStatus(500)
                 return con.rollback(() => {
-                    throw err
+                    console.error(err)
+                    res.sendStatus(500)
                 })
             }
 
@@ -320,7 +319,7 @@ app.post('/plans', isAuth, (req, res) => {
                     "Response": "You already have a workout plan with this title"
                 })
                 return con.rollback(() => {
-                    throw err
+                    res.sendStatus(400)
                 })
             }
         })
@@ -332,20 +331,18 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                console.error(err)
-                res.sendStatus(500)
                 return con.rollback(() => {
-                    throw err
+                    console.error(err)
+                    res.sendStatus(500)
                 })
             }
         })
 
         con.commit((err) => {
             if (err) {
-                console.error(err)
-                res.sendStatus(500)
                 return con.rollback(() => {
-                    throw err
+                    console.error(err)
+                    res.sendStatus(500)
                 })
             }
         })
@@ -380,10 +377,9 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
             con.query(query, params, (err, results, fields) => {
                 // internal server error handling
                 if (err) {
-                    console.error(err)
-                    res.sendStatus(500)
                     return con.rollback(() => {
-                        throw err
+                        console.error(err)
+                        res.sendStatus(500)
                     })
                 }
 
@@ -394,7 +390,7 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
                         "Response": "You already have a workout plan with this title"
                     })
                     return con.rollback(() => {
-                        throw err
+                        res.sendStatus(400)
                     })
                 }
             })
@@ -412,19 +408,17 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                console.error(err)
-                res.sendStatus(500)
                 return con.rollback(() => {
-                    throw err
+                    console.error(err)
+                    res.sendStatus(500)
                 })
             }
 
             con.commit((err) => {
                 if (err) {
-                    console.error(err)
-                    res.sendStatus(500)
                     return con.rollback(() => {
-                        throw err
+                        console.error(err)
+                        res.sendStatus(500)
                     })
                 }
             })
@@ -485,10 +479,9 @@ app.get('/goals', isAuth, (req, res) => {
         con.query("SELECT id, type FROM goal WHERE user_email = ?", [user_email], (err, results, fields) => {
             // internal server error handling
             if (err) {
-                console.error(err)
-                res.sendStatus(500)
                 return con.rollback(() => {
-                    throw err
+                    console.error(err)
+                    res.sendStatus(500)
                 })
             } else {
                 // Get the IDs for all the queried goals, and split them into 4 arrays
@@ -511,10 +504,9 @@ app.get('/goals', isAuth, (req, res) => {
                             body_weight_goal_ids.push(goal.id)
                             break
                         default:
-                            console.error(`Invalid goal type: ${goal.type}`)
-                            res.sendStatus(400)
                             return con.rollback(() => {
-                                throw err
+                                console.error(`Invalid goal type: ${goal.type}`)
+                                res.sendStatus(400)
                             })
                     }
                 })
@@ -583,10 +575,9 @@ app.get('/goals', isAuth, (req, res) => {
                     .then((resultsArray) => {
                         con.commit((err) => {
                             if (err) {
-                                console.error(err)
-                                res.sendStatus(500)
                                 return con.rollback(() => {
-                                    throw err
+                                    console.error(err)
+                                    res.sendStatus(500)
                                 })
                             }
                         })
@@ -603,10 +594,9 @@ app.get('/goals', isAuth, (req, res) => {
                         })
                     })
                     .catch((err) => {
-                        console.error(err)
-                        res.sendStatus(500)
                         return con.rollback(() => {
-                            throw err
+                            console.error(err)
+                            res.sendStatus(500)
                         })
                     })
                     .finally(() => {
@@ -636,83 +626,67 @@ app.post('/goals', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                console.error(err)
-                res.sendStatus(500)
                 return con.rollback(() => {
-                    throw err
+                    console.error(err)
+                    res.sendStatus(500)
                 })
             }
 
-            query = "SELECT LAST_INSERT_ID() AS id"
+            const id = results.insertId
+
+            switch (type) {
+                case "misc":
+                    query = "INSERT INTO misc_goal (goal_id, description) VALUES (?, ?)"
+                    params = [id, description]
+                    break
+                case "endurance":
+                    query = "INSERT INTO endurance_goal (goal_id, exercise_id, time) VALUES (?, ?, ?)"
+                    params = [id, exercise_id, time]
+                    break
+                case "weight":
+                    query = "INSERT INTO weight_goal (goal_id, exercise_id, sets, reps, weight) VALUES (?, ?, ?, ?, ?)"
+                    params = [id, exercise_id, sets, reps, weight]
+                    break
+                case "body_weight":
+                    query = "INSERT INTO body_weight_goal (goal_id, start_weight, goal_weight) VALUES (?, ?, ?)"
+                    params = [id, start_weight, goal_weight]
+                    break
+                default:
+                    return con.rollback(() => {
+                        console.error(`Invalid goal type: ${goal.type}`)
+                        res.sendStatus(400)
+                    })
+            }
+
             con.query(query, params, (err, results, fields) => {
                 // internal server error handling
                 if (err) {
-                    console.error(err)
-                    res.sendStatus(500)
                     return con.rollback(() => {
-                        throw err
-                    })
-                }
-
-                const id = results[0].id // Result has 1 row, which has only an id property (hence, results[0].id)
-
-                switch (type) {
-                    case "misc":
-                        query = "INSERT INTO misc_goal (goal_id, description) VALUES (?, ?)"
-                        params = [id, description]
-                        break
-                    case "endurance":
-                        query = "INSERT INTO endurance_goal (goal_id, exercise_id, time) VALUES (?, ?, ?)"
-                        params = [id, exercise_id, time]
-                        break
-                    case "weight":
-                        query = "INSERT INTO weight_goal (goal_id, exercise_id, sets, reps, weight) VALUES (?, ?, ?, ?, ?)"
-                        params = [id, exercise_id, sets, reps, weight]
-                        break
-                    case "body_weight":
-                        query = "INSERT INTO body_weight_goal (goal_id, start_weight, goal_weight) VALUES (?, ?, ?)"
-                        params = [id, start_weight, goal_weight]
-                        break
-                    default:
-                        console.error(`Invalid goal type: ${goal.type}`)
-                        res.sendStatus(400)
-                        return con.rollback(() => {
-                            throw err
-                        })
-                }
-
-                con.query(query, params, (err, results, fields) => {
-                    // internal server error handling
-                    if (err) {
                         console.error(err)
                         res.sendStatus(500)
-                        return con.rollback(() => {
-                            throw err
-                        })
-                    }
+                    })
+                }
 
-                    con.commit((err) => {
-                        if (err) {
+                con.commit((err) => {
+                    if (err) {
+                        return con.rollback(() => {
                             console.error(err)
                             res.sendStatus(500)
-                            return con.rollback(() => {
-                                throw err
-                            })
-                        }
-                    })
+                        })
+                    }
+                })
 
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                res.json({
+                    "Status": "OK",
+                    "Response": [req.body]
+                })
 
-                    // gracefully end connection after sending data, if error destroy connection (force close)
-                    con.end((err) => {
-                        if (err) {
-                            console.error(err)
-                            con.destroy()
-                        }
-                    })
+                // gracefully end connection after sending data, if error destroy connection (force close)
+                con.end((err) => {
+                    if (err) {
+                        console.error(err)
+                        con.destroy()
+                    }
                 })
             })
         })
@@ -747,10 +721,9 @@ app.put('/goals/:id', isAuth, (req, res) => {
 
             con.query(query, params, (err, results, fields) => {
                 if (err) {
-                    console.error(err)
-                    res.sendStatus(500)
                     return con.rollback(() => {
-                        throw err
+                        console.error(err)
+                        res.sendStatus(500)
                     })
                 }
             })
@@ -767,10 +740,9 @@ app.put('/goals/:id', isAuth, (req, res) => {
 
             con.query(query, params, (err, results, fields) => {
                 if (err) {
-                    console.error(err)
-                    res.sendStatus(500)
                     return con.rollback(() => {
-                        throw err
+                        console.error(err)
+                        res.sendStatus(500)
                     })
                 }
             })
@@ -778,10 +750,9 @@ app.put('/goals/:id', isAuth, (req, res) => {
 
         con.commit((err) => {
             if (err) {
-                console.error(err)
-                res.sendStatus(500)
                 return con.rollback(() => {
-                    throw err
+                    console.error(err)
+                    res.sendStatus(500)
                 })
             }
         })
@@ -868,10 +839,9 @@ app.get('/workout-plan-exercises', isAuth, (req, res) => {
             .then((resultsArray) => {
                 con.commit((err) => {
                     if (err) {
-                        console.error(err)
-                        res.sendStatus(500)
                         return con.rollback(() => {
-                            throw err
+                            console.error(err)
+                            res.sendStatus(500)
                         })
                     }
                 })
@@ -886,10 +856,9 @@ app.get('/workout-plan-exercises', isAuth, (req, res) => {
                 })
             })
             .catch((err) => {
-                console.error(err)
-                res.sendStatus(500)
                 return con.rollback(() => {
-                    throw err
+                    console.error(err)
+                    res.sendStatus(500)
                 })
             })
             .finally(() => {
