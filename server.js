@@ -306,9 +306,9 @@ app.post('/plans', isAuth, (req, res) => {
         con.query(query, params, (err, results, fields) => {
             // internal server error handling
             if (err) {
-                return con.rollback(() => {
+                con.rollback(() => {
                     console.error(err)
-                    res.sendStatus(500)
+                    return res.sendStatus(500)
                 })
             }
 
