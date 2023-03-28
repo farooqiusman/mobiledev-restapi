@@ -623,7 +623,7 @@ app.post('/goals', isAuth, (req, res) => {
         const {user_email, type, deadline, description, exercise_id, time, sets, reps, weight, start_weight, goal_weight} = req.body
         const completed = 0
         const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ')
-        let query = "INSERT INTO goal (user_email, type, deadline, completed, creation_date) VALUES (?, ?, ?, ?, ?); SELECT LAST_INSERT_ID() AS id;"
+        let query = "INSERT INTO goal (user_email, type, deadline, completed, creation_date) VALUES (?, ?, ?, ?, ?)"
         let params = [user_email, type, deadline, completed, creation_date]
         
         con.query(query, params, (err, results, fields) => {
@@ -636,33 +636,7 @@ app.post('/goals', isAuth, (req, res) => {
                 })
             }
 
-            const id = results[1][0].id // Select is the second query, which has 1 row, which has only an id property (hence, results[1][0].id)
-
-            switch (type) {
-                case "misc":
-                    query = "INSERT INTO misc_goal (goal_id, description) VALUES (?, ?)"
-                    params = [id, description]
-                    break
-                case "endurance":
-                    query = "INSERT INTO endurance_goal (goal_id, exercise_name, time) VALUES (?, ?, ?)"
-                    params = [id, exercise_id, time]
-                    break
-                case "weight":
-                    query = "INSERT INTO weight_goal (goal_id, exercise_name, sets, reps, weight) VALUES (?, ?, ?, ?, ?)"
-                    params = [id, exercise_id, sets, reps, weight]
-                    break
-                case "body_weight":
-                    query = "INSERT INTO body_weight_goal (goal_id, start_weight, goal_weight) VALUES (?, ?, ?)"
-                    params = [id, start_weight, goal_weight]
-                    break
-                default:
-                    console.error(`Invalid goal type: ${goal.type}`)
-                    res.sendStatus(400)
-                    return con.rollback(() => {
-                        throw err
-                    })
-            }
-
+            query = "SELECT LAST_INSERT_ID() AS id"
             con.query(query, params, (err, results, fields) => {
                 // internal server error handling
                 if (err) {
@@ -673,7 +647,35 @@ app.post('/goals', isAuth, (req, res) => {
                     })
                 }
 
-                con.commit((err) => {
+                const id = results[0].id // Result has 1 row, which has only an id property (hence, results[0].id)
+
+                switch (type) {
+                    case "misc":
+                        query = "INSERT INTO misc_goal (goal_id, description) VALUES (?, ?)"
+                        params = [id, description]
+                        break
+                    case "endurance":
+                        query = "INSERT INTO endurance_goal (goal_id, exercise_name, time) VALUES (?, ?, ?)"
+                        params = [id, exercise_id, time]
+                        break
+                    case "weight":
+                        query = "INSERT INTO weight_goal (goal_id, exercise_name, sets, reps, weight) VALUES (?, ?, ?, ?, ?)"
+                        params = [id, exercise_id, sets, reps, weight]
+                        break
+                    case "body_weight":
+                        query = "INSERT INTO body_weight_goal (goal_id, start_weight, goal_weight) VALUES (?, ?, ?)"
+                        params = [id, start_weight, goal_weight]
+                        break
+                    default:
+                        console.error(`Invalid goal type: ${goal.type}`)
+                        res.sendStatus(400)
+                        return con.rollback(() => {
+                            throw err
+                        })
+                }
+
+                con.query(query, params, (err, results, fields) => {
+                    // internal server error handling
                     if (err) {
                         console.error(err)
                         res.sendStatus(500)
@@ -681,19 +683,29 @@ app.post('/goals', isAuth, (req, res) => {
                             throw err
                         })
                     }
-                })
 
-                res.json({
-                    "Status": "OK",
-                    "Response": [req.body]
-                })
+                    con.commit((err) => {
+                        if (err) {
+                            console.error(err)
+                            res.sendStatus(500)
+                            return con.rollback(() => {
+                                throw err
+                            })
+                        }
+                    })
 
-                // gracefully end connection after sending data, if error destroy connection (force close)
-                con.end((err) => {
-                    if (err) {
-                        console.error(err)
-                        con.destroy()
-                    }
+                    res.json({
+                        "Status": "OK",
+                        "Response": [req.body]
+                    })
+
+                    // gracefully end connection after sending data, if error destroy connection (force close)
+                    con.end((err) => {
+                        if (err) {
+                            console.error(err)
+                            con.destroy()
+                        }
+                    })
                 })
             })
         })
