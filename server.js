@@ -314,12 +314,11 @@ app.post('/plans', isAuth, (req, res) => {
 
             const count = results[0].num_rows
             if (count > 0) {
-                res.json({
-                    "Status": "Bad Request",
-                    "Response": "You already have a workout plan with this title"
-                })
                 return con.rollback(() => {
-                    res.sendStatus(400)
+                    res.json({
+                        "Status": "Bad Request",
+                        "Response": "You already have a workout plan with this title"
+                    })
                 })
             }
         })
