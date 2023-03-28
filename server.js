@@ -310,6 +310,7 @@ app.post('/plans', isAuth, (req, res) => {
                     console.error(err)
                     res.sendStatus(500)
                     con.destroy()
+                    throw err
                 })
             }
 
