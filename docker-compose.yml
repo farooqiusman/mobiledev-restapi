@@ -2,6 +2,7 @@ version: '3'
 services:
   api:
     image: sample-express-app
+    container_name: mobiledev_rest_api
     build: .
     networks:
       - backend
