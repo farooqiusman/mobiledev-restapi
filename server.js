@@ -141,10 +141,7 @@ app.get('/endurance-exercises/:user_email', isAuth, (req, res) => {
                 res.sendStatus(500)
                 con.destroy() // destory connection if still alive
             } else {
-                res.json({
-                    "Status": "OK",
-                    "Response": results
-                })
+                res.json(results)
                 // gracefully end connection after sending data, if error destroy connection (force close)
                 con.end((err) => {
                     if (err) {
@@ -302,10 +299,7 @@ app.get('/plans/:user_email', isAuth, (req, res) => {
                 res.sendStatus(500)
                 con.destroy() // destory connection if still alive
             } else {
-                res.json({
-                    "Status": "OK",
-                    "Response": results
-                })
+                res.json(results)
                 // gracefully end connection after sending data, if error destroy connection (force close)
                 con.end((err) => {
                     if (err) {
@@ -639,13 +633,10 @@ app.get('/goals/:user_email', isAuth, (req, res) => {
 
                         // Send the combined results as a JSON response
                         res.json({
-                            "Status": "OK",
-                            "Response": {
-                                "misc_goals": resultsArray[0],
-                                "endurance_goals": resultsArray[1],
-                                "weight_goals": resultsArray[2],
-                                "body_weight_goals": resultsArray[3]
-                            }
+                            "misc_goals": resultsArray[0],
+                            "endurance_goals": resultsArray[1],
+                            "weight_goals": resultsArray[2],
+                            "body_weight_goals": resultsArray[3]
                         })
                     })
                 })
@@ -897,11 +888,8 @@ app.get('/workout-plan-exercises/:user_email/:workout_plan_title', isAuth, (req,
                     
                     // Send the combined results as a JSON response
                     res.json({
-                        "Status": "OK",
-                        "Response": {
-                            "weight_exercises": resultsArray[0],
-                            "endurance_exercises": resultsArray[1]
-                        }
+                        "weight_exercises": resultsArray[0],
+                        "endurance_exercises": resultsArray[1]
                     })
                 })
             })
