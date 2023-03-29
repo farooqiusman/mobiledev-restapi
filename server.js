@@ -104,6 +104,64 @@ app.get('/user-email', isAuth, (req, res) => {
 	})
 })
 
+app.get('/check_auth/:user_email/:password', isAuth, (req, res) =>{
+	con = mysql.createConnection(dbConfig)
+	con.connect((err) => {
+		const {user_email, password} = req.params
+		con.query("SELECT email, password FROM user where email= ?", [user_email], (err, results, fields) => {
+            // internal server error handling
+            if (err) {
+                console.error(err)
+                res.sendStatus(500)
+                con.destroy() // destory connection if still alive
+            } else {
+                res.json({
+                    "Status": "OK",
+                    "Response": bcrypt.compareSync(password, results[0].password)
+                })
+                // gracefully end connection after sending data, if error destroy connection (force close)
+                con.end((err) => {
+                    if (err) {
+                        console.error(err)
+                        con.destroy()
+                    }
+                })
+            }
+		})
+	})
+
+})
+
+app.post('/new-user', isAuth, (req, res) => {
+	con = mysql.createConnection(dbConfig)
+	const {email,username} = req.body
+	const {password} = req.body
+	const salt = bcrypt.genSaltSync(10);
+	const hash_password = bcrypt.hashSync(password, salt)
+	let query = "INSERT INTO user (email, password, username, creation_date) VALUES (?, ?, ?, ?)"
+	const creation_date = new Date().toISOString().slice(0, 19).replace('T', ' ')
+	let params = [email, hash_password, username, creation_date]
+	con.query(query, params, (err, results, fields) => {
+		if (err) {
+			console.error(err)
+			res.sendStatus(500)
+			con.destroy() // destory connection if still alive
+		} else {
+			res.json({
+				"Status": "OK",
+				"Response": [req.body]
+			})
+			// gracefully end connection after sending data, if error destroy connection (force close)
+			con.end((err) => {
+				if (err) {
+					console.error(err)
+					con.destroy()
+				}
+			})
+		}
+	})
+})
+
 // Exercises
 app.get('/weight-exercises/:user_email', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
