@@ -105,10 +105,10 @@ app.get('/user-email', isAuth, (req, res) => {
 })
 
 // Exercises
-app.get('/weight-exercises', isAuth, (req, res) => {
+app.get('/weight-exercises/:user_email', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.connect((err) => {
-        const {user_email} = req.body
+        const {user_email} = req.params
         con.query("SELECT * FROM weight_exercise WHERE user_email = ?", [user_email], (err, results, fields) => {
             // internal server error handling
             if (err) {
@@ -132,10 +132,10 @@ app.get('/weight-exercises', isAuth, (req, res) => {
     }) 
 })
 
-app.get('/endurance-exercises', isAuth, (req, res) => {
+app.get('/endurance-exercises/:user_email', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.connect((err) => {
-        const {user_email} = req.body
+        const {user_email} = req.params
 
         con.query("SELECT * FROM endurance_exercise WHERE user_email = ?", [user_email], (err, results, fields) => {
             // internal server error handling
@@ -294,10 +294,10 @@ app.delete('/exercises/:id', isAuth, (req, res) => {
 })
 
 // Plans
-app.get('/plans', isAuth, (req, res) => {
+app.get('/plans/:user_email', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.connect((err) => {
-        const {user_email} = req.body
+        const {user_email} = req.params
         con.query("SELECT * FROM workout_plan WHERE user_email = ?", [user_email], (err, results, fields) => {
             // internal server error handling
             if (err) {
@@ -528,10 +528,10 @@ app.delete('/plans/:user_email/:title', isAuth, (req, res) => {
 })
 
 // Goals
-app.get('/goals', isAuth, (req, res) => {
+app.get('/goals/:user_email', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.beginTransaction((err) => {
-        const {user_email} = req.body
+        const {user_email} = req.params
 
         // Get all the users goal records, and get all the specific types of goals in parallel with Promises
         con.query("SELECT id, type FROM goal WHERE user_email = ?", [user_email], (err, results, fields) => {
@@ -857,10 +857,10 @@ app.delete('/goals/:id', isAuth, (req, res) => {
 })
 
 // Workout Plan Exercises
-app.get('/workout-plan-exercises', isAuth, (req, res) => {
+app.get('/workout-plan-exercises/:user_email/:workout_plan_title', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.beginTransaction((err) => {
-        const {user_email, workout_plan_title} = req.body
+        const {user_email, workout_plan_title} = req.params
 
         // Each promise runs a separate query. Gets the weight exercises and the endurance exercises corresponding to this plan
         // using an INNER JOIN
