@@ -37,8 +37,8 @@ function isAuth(req,res,next) {
     if (auth) {
         const credentials = Buffer.from(auth.split(' ')[1], 'base64').toString('ascii')
         const [username, password] = credentials.split(':')
-        const expectedusername = 'mobiledev'
-        const expectedpassword = 'mobiledev123*'
+        const expectedusername = process.env.APIUSER
+        const expectedpassword = process.env.APIPASS
         if (username == expectedusername && password == expectedpassword){
             next()
         }else{
@@ -75,6 +75,33 @@ app.get('/status', isAuth, (req,res) => {
             })
         }
     })
+})
+
+app.get('/user-email', isAuth, (req, res) => {
+	con = mysql.createConnection(dbConfig)
+	con.connect((err) => {
+		const user_email = req.query.user_email
+		con.query("SELECT COUNT(*) as num_rows FROM user where email= ?", [user_email], (err, results, fields) => {
+            // internal server error handling
+            if (err) {
+                console.error(err)
+                res.sendStatus(500)
+                con.destroy() // destory connection if still alive
+            } else {
+                res.json({
+                    "Status": "OK",
+                    "Response": results[0].num_rows
+                })
+                // gracefully end connection after sending data, if error destroy connection (force close)
+                con.end((err) => {
+                    if (err) {
+                        console.error(err)
+                        con.destroy()
+                    }
+                })
+            }
+		})
+	})
 })
 
 // Exercises
