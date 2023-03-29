@@ -147,10 +147,7 @@ app.post('/new-user', isAuth, (req, res) => {
 			res.sendStatus(500)
 			con.destroy() // destory connection if still alive
 		} else {
-			res.json({
-				"Status": "OK",
-				"Response": [req.body]
-			})
+			res.json(req.body)
 			// gracefully end connection after sending data, if error destroy connection (force close)
 			con.end((err) => {
 				if (err) {
@@ -239,10 +236,7 @@ app.post('/exercises', isAuth, (req, res) => {
                     res.sendStatus(500)
                     con.destroy() // destory connection if still alive
                 } else {
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                    res.json(req.body)
                     // gracefully end connection after sending data, if error destroy connection (force close)
                     con.end((err) => {
                         if (err) {
@@ -286,10 +280,7 @@ app.put('/exercises/:id', isAuth, (req, res) => {
                     res.sendStatus(500)
                     con.destroy() // destory connection if still alive
                 } else {
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                    res.json(req.body)
                     // gracefully end connection after sending data, if error destroy connection (force close)
                     con.end((err) => {
                         if (err) {
@@ -328,10 +319,7 @@ app.delete('/exercises/:id', isAuth, (req, res) => {
                     res.sendStatus(500)
                     con.destroy() // destory connection if still alive
                 } else {
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                    res.sendStatus(200)
                     // gracefully end connection after sending data, if error destroy connection (force close)
                     con.end((err) => {
                         if (err) {
@@ -422,10 +410,7 @@ app.post('/plans', isAuth, (req, res) => {
                         })
                     }
         
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                    res.json(req.body)
 
                     con.destroy()
                 })
@@ -494,10 +479,7 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
                             })
                         }
             
-                        res.json({
-                            "Status": "OK",
-                            "Response": [req.body]
-                        })
+                        res.json(req.body)
 
                         con.destroy()
                     })
@@ -534,10 +516,7 @@ app.put('/plans/:user_email/:title', isAuth, (req, res) => {
                         })
                     }
         
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                    res.json(req.body)
 
                     con.destroy()
                 })
@@ -561,9 +540,7 @@ app.delete('/plans/:user_email/:title', isAuth, (req, res) => {
                 res.sendStatus(500)
                 con.destroy() // destory connection if still alive
             } else {
-                res.json({
-                    "Status": "OK"
-                })
+                res.sendStatus(200)
                 // gracefully end connection after sending data, if error destroy connection (force close)
                 con.end((err) => {
                     if (err) {
@@ -783,10 +760,7 @@ app.post('/goals', isAuth, (req, res) => {
                         })
                     }
 
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                    res.json(req.body)
 
                     con.destroy()
                 })
@@ -857,10 +831,7 @@ app.put('/goals/:id', isAuth, (req, res) => {
                                 })
                             }
 
-                            res.json({
-                                "Status": "OK",
-                                "Response": [req.body]
-                            })
+                            res.json(req.body)
 
                             con.destroy()
                         })
@@ -887,9 +858,7 @@ app.delete('/goals/:id', isAuth, (req, res) => {
                 res.sendStatus(500)
                 con.destroy() // destory connection if still alive
             } else {
-                res.json({
-                    "Status": "OK"
-                })
+                res.sendStatus(200)
                 // gracefully end connection after sending data, if error destroy connection (force close)
                 con.end((err) => {
                     if (err) {
@@ -997,10 +966,7 @@ app.post('/workout-plan-exercises', isAuth, (req, res) => {
                     res.sendStatus(500)
                     con.destroy() // destory connection if still alive
                 } else {
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                    res.json(req.body)
                     // gracefully end connection after sending data, if error destroy connection (force close)
                     con.end((err) => {
                         if (err) {
@@ -1048,10 +1014,7 @@ app.delete('/workout-plan-exercises/:user_email/:workout_plan_title/:exercise_id
                     res.sendStatus(500)
                     con.destroy() // destory connection if still alive
                 } else {
-                    res.json({
-                        "Status": "OK",
-                        "Response": [req.body]
-                    })
+                    res.sendStatus(200)
                     // gracefully end connection after sending data, if error destroy connection (force close)
                     con.end((err) => {
                         if (err) {
