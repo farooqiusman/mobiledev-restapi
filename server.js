@@ -108,7 +108,7 @@ app.get('/check_auth/:user_email/:password', isAuth, (req, res) =>{
 	con = mysql.createConnection(dbConfig)
 	con.connect((err) => {
 		const {user_email, password} = req.params
-		con.query("SELECT email, password FROM user where email= ?", [user_email], (err, results, fields) => {
+		con.query("SELECT email, password, username FROM user where email= ?", [user_email], (err, results, fields) => {
             // internal server error handling
             if (err) {
                 console.error(err)
@@ -117,7 +117,7 @@ app.get('/check_auth/:user_email/:password', isAuth, (req, res) =>{
             } else {
                 res.json({
                     "Status": "OK",
-                    "Response": bcrypt.compareSync(password, results[0].password)
+                    "Response": `${bcrypt.compareSync(password, results[0].password)}:${results[0].username}`
                 })
                 // gracefully end connection after sending data, if error destroy connection (force close)
                 con.end((err) => {
