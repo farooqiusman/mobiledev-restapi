@@ -89,10 +89,7 @@ app.get('/weight-exercises', isAuth, (req, res) => {
                 res.sendStatus(500)
                 con.destroy() // destory connection if still alive
             } else {
-                res.json({
-                    "Status": "OK",
-                    "Response": results
-                })
+                res.json(results)
                 // gracefully end connection after sending data, if error destroy connection (force close)
                 con.end((err) => {
                     if (err) {
