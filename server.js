@@ -294,12 +294,11 @@ app.put('/exercises/:id', isAuth, (req, res) => {
     }) 
 })
 
-app.delete('/exercises/:id', isAuth, (req, res) => {
+app.delete('/exercises/:exercise_type/:id', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.connect((err) => {
         // get the exercise id and exercise type (so we know which table to delete from)
-        const {id} = req.params
-        const {exercise_type} = req.body
+        const {exercise_type, id} = req.params
         
         let query = null
         if (exercise_type === "endurance") { // endurance exercise
@@ -982,14 +981,11 @@ app.post('/workout-plan-exercises', isAuth, (req, res) => {
 
 // NOTE: there is not put for workout-plan-exercises because all the columns are the PK, and these are only affected in these tables through CASCADE
 
-app.delete('/workout-plan-exercises/:user_email/:workout_plan_title/:exercise_id', isAuth, (req, res) => {
+app.delete('/workout-plan-exercises/:user_email/:workout_plan_title/:exercise_type/:exercise_id', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.connect((err) => {
         // get the workout plan exercise's PK attributes
-        const {user_email, workout_plan_title, exercise_id} = req.params
-
-        // get the exercise type so we know which table to delete from
-        const {exercise_type} = req.body
+        const {user_email, workout_plan_title, exercise_type, exercise_id} = req.params
 
         // check for valid exercise type
         let table_name = null
