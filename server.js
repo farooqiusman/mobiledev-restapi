@@ -1024,6 +1024,63 @@ app.delete('/workout-plan-exercises/:user_email/:workout_plan_title/:exercise_ty
     }) 
 })
 
+app.delete('/workout-plan-exercises/:user_email/:workout_plan_title', isAuth, (req, res) => {
+    con = mysql.createConnection(dbConfig) // create new connection to db for query
+    con.beginTransaction((err) => {
+        const {user_email, workout_plan_title} = req.params
+
+        // Each promise runs a separate query. Gets the weight exercises and the endurance exercises corresponding to this plan
+        // using an INNER JOIN
+        const promises = [
+            new Promise((resolve, reject) => {
+                con.query(`DELETE FROM workout_plan_weight_exercise WHERE user_email = ? AND workout_plan_title = ?`,
+                    [user_email, workout_plan_title], (err, results, fields) => {
+                    if (err) reject(err)
+                    else resolve(results)
+                });
+            }),
+            new Promise((resolve, reject) => {
+                con.query(`DELETE FROM workout_plan_endurance_exercise WHERE user_email = ? AND workout_plan_title = ?`,
+                    [user_email, workout_plan_title], (err, results, fields) => {
+                    if (err) reject(err)
+                    else resolve(results)
+                });
+            })
+        ];
+
+        // Run all the queries in parallel and return their aggregated results as a json response
+        Promise.all(promises)
+            .then((resultsArray) => {
+                con.commit((err) => {
+                    if (err) {
+                        return con.rollback(() => {
+                            console.error(err)
+                            res.sendStatus(500)
+                        })
+                    }
+                    
+                    // Send success response
+                    res.sendStatus(200);
+                })
+            })
+            .catch((err) => {
+                return con.rollback(() => {
+                    console.error(err)
+                    res.sendStatus(500)
+                })
+            })
+            .finally(() => {
+                // gracefully end connection after sending data, if error destroy connection (force close)
+                con.end((err) => {
+                    if (err) {
+                        console.error(err)
+                        con.destroy()
+                    }
+                })
+            })
+    }) 
+})
+
 // app listen
 app.listen(port, () => {
     console.log(`API listening on port ${port}`)
