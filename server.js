@@ -250,14 +250,13 @@ app.post('/exercises', isAuth, (req, res) => {
     }) 
 })
 
-app.put('/exercises/:id', isAuth, (req, res) => {
+app.put('/exercises/:id/:exercise_type', isAuth, (req, res) => {
     con = mysql.createConnection(dbConfig) // create new connection to db for query
     con.connect((err) => {
         // get the exercise id
-        const {id} = req.params
-        // store the exercise_type value and add all the other included values to params
-        const {exercise_type} = req.body
-        const entries = Object.entries(req.body).filter(([key, value]) => key !== "exercise_type")
+        const {id, exercise_type} = req.params
+
+        const entries = Object.entries(req.body)
         const paramsStr = createPutParamsString(entries)
         const params = entries.map(entry => entry[1])
         params.push(parseInt(id))
