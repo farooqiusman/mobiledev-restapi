@@ -614,7 +614,9 @@ app.get('/goals/:user_email', isAuth, (req, res) => {
                     if (endurance_goal_ids.length > 0) {
                         const idListStr = createIdListParamStr(endurance_goal_ids)
                         con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, \
-                        endurance_goal.exercise_id, endurance_goal.time FROM goal INNER JOIN endurance_goal ON goal.id = endurance_goal.goal_id \
+                        endurance_goal.exercise_id, endurance_exercise.name, endurance_goal.time FROM goal \
+                        INNER JOIN endurance_goal ON goal.id = endurance_goal.goal_id \
+                        INNER JOIN endurance_exercise ON endurance_goal.exercise_id = endurance_exercise.id \
                         WHERE endurance_goal.goal_id IN ${idListStr}`,
                             endurance_goal_ids, (err, results, fields) => {
                             if (err) reject(err)
@@ -628,8 +630,10 @@ app.get('/goals/:user_email', isAuth, (req, res) => {
                     if (weight_goal_ids.length > 0) {
                         const idListStr = createIdListParamStr(weight_goal_ids)
                         con.query(`SELECT goal.id, goal.user_email, goal.deadline, goal.completed, goal.creation_date, \
-                        weight_goal.exercise_id, weight_goal.sets, weight_goal.reps, weight_goal.weight FROM goal INNER JOIN weight_goal \
-                        ON goal.id = weight_goal.goal_id WHERE weight_goal.goal_id IN ${idListStr}`,
+                        weight_goal.exercise_id, weight_exercise.name, weight_goal.sets, weight_goal.reps, weight_goal.weight FROM goal \
+                        INNER JOIN weight_goal ON goal.id = weight_goal.goal_id \
+                        INNER JOIN weight_exercise ON weight_goal.exercise_id = weight_exercise.id \
+                        WHERE weight_goal.goal_id IN ${idListStr}`,
                             weight_goal_ids, (err, results, fields) => {
                             if (err) reject(err)
                             else resolve(results)
